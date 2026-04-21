@@ -1,0 +1,82 @@
+{{- include "soma-app.validateScaling" . }}
+{{- if not .Values.image.repository }}
+{{- fail "image.repository is required — set the full ECR repository path." }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-app.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "soma-app.labels" . | nindent 4 }}
+spec:
+  {{- if not (or .Values.keda.enabled .Values.hpa.enabled) }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "soma-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "soma-app.selectorLabels" . | nindent 8 }}
+        {{- include "soma-app.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "soma-app.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "soma-app.fullname" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if or .Values.env .Values.externalSecret.enabled }}
+          envFrom:
+            {{- if .Values.externalSecret.enabled }}
+            - secretRef:
+                name: {{ include "soma-app.secretName" . }}
+            {{- end }}
+            {{- if .Values.env }}
+            - configMapRef:
+                name: {{ include "soma-app.fullname" . }}-env
+            {{- end }}
+          {{- end }}
+          {{- if .Values.configMap.enabled }}
+          volumeMounts:
+            - name: config
+              mountPath: {{ .Values.configMap.mountPath }}
+              readOnly: true
+          {{- end }}
+      {{- if .Values.configMap.enabled }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "soma-app.configMapName" . }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

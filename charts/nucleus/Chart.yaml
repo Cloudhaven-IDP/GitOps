@@ -1,0 +1,8 @@
+apiVersion: v2
+name: nucleus
+description: Base Helm chart for all platform services — agents, workers, APIs.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: Cloudhaven IDP

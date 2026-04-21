@@ -1,0 +1,163 @@
+# =============================================================================
+# nucleus — default values
+# Every field here can be overridden in apps/<name>/values.yaml
+# =============================================================================
+
+# -- Image
+image:
+  # Full ECR repository path. Required — no default.
+  # e.g. 445746982355.dkr.ecr.us-east-1.amazonaws.com/soma-orchestrator
+  repository: ""
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# -- Replica count (ignored when keda.enabled or hpa.enabled is true)
+replicaCount: 1
+
+# -- Service
+service:
+  port: 8000
+  targetPort: 8000
+
+# -- Resources
+# CPU limit intentionally omitted by default — CPU throttling causes latency
+# spikes in Python services. Set explicitly if needed.
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+# -- Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# -- Container security context
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  # readOnlyRootFilesystem disabled by default — Python/FastAPI write to tmp.
+  # Enable per-app once you've confirmed no filesystem writes at runtime.
+  readOnlyRootFilesystem: false
+
+# -- Liveness probe
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 30
+  failureThreshold: 3
+
+# -- Readiness probe
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+# -- Service account
+serviceAccount:
+  create: true
+  # Annotations — add IRSA role ARN here when the IRSA module is ready:
+  # eks.amazonaws.com/role-arn: arn:aws:iam::123456789:role/soma-orchestrator
+  annotations: {}
+
+# -- Plain (non-secret) environment variables
+# env:
+#   ENV: production
+#   AWS_REGION: us-east-1
+env: {}
+
+# -- Node placement
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# -- ExternalSecret (ESO)
+# Pulls secrets from AWS Secrets Manager into a K8s Secret,
+# which is then mounted as envFrom on the container.
+externalSecret:
+  enabled: false
+  # SecretStore to use. ClusterSecretStore spans namespaces.
+  secretStore:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  # Path in Secrets Manager. e.g. soma/orchestrator
+  secretManagerPath: ""
+  # How often ESO re-syncs
+  refreshInterval: 1h
+  # Keys to pull. Each entry maps a K8s secret key to a Secrets Manager field.
+  # keys:
+  #   - secretKey: NUTRITIONIX_API_KEY
+  #     remoteRef:
+  #       key: soma/nutrition-agent
+  #       property: NUTRITIONIX_API_KEY
+  keys: []
+
+# -- KEDA ScaledObject
+# Mutually exclusive with hpa.enabled — the chart will fail if both are true.
+keda:
+  enabled: false
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  # Polling interval in seconds
+  pollingInterval: 30
+  # How long to wait before scaling to zero (if minReplicaCount: 0)
+  cooldownPeriod: 300
+  # Triggers — fully configurable. Examples below.
+  triggers: []
+  # CPU trigger example:
+  # - type: cpu
+  #   metricType: Utilization
+  #   metadata:
+  #     value: "70"
+  #
+  # Memory trigger example:
+  # - type: memory
+  #   metricType: Utilization
+  #   metadata:
+  #     value: "80"
+  #
+  # SQS trigger example (CDC feedback pipeline):
+  # - type: aws-sqs-queue
+  #   metadata:
+  #     queueURL: https://sqs.us-east-1.amazonaws.com/445746982355/soma-feedback
+  #     queueLength: "5"
+  #     awsRegion: us-east-1
+  #   authenticationRef:
+  #     name: keda-aws-credentials
+
+# -- HPA (Horizontal Pod Autoscaler)
+# Mutually exclusive with keda.enabled — the chart will fail if both are true.
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  # Set to null to disable that metric
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: null
+
+# -- ConfigMap
+# Optional config files mounted into the container (e.g. routes.yaml).
+configMap:
+  enabled: false
+  # Key → file content
+  data: {}
+  # Where to mount it in the container
+  mountPath: /app/config
+
+# -- HTTPRoute (Gateway API)
+httpRoute:
+  enabled: false
+  hostname: ""
+  gateway:
+    name: humboldt-internal
+    namespace: envoy-gateway-system
