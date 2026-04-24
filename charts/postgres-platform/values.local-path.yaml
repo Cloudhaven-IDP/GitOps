@@ -1,0 +1,17 @@
+postgres:
+  instances: 1
+
+  storage:
+    storageClass: local-path
+    size: 20Gi
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+  affinity:
+    nodeSelector:
+      kubernetes.io/hostname: pi-2

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: postgres-platform
+description: Per-tenant CNPG Postgres cluster. Values keyed on storage class, not cluster name.
+type: application
+version: 0.1.0
+appVersion: "1.29.0"
+maintainers:
+  - name: Cloudhaven IDP

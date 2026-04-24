@@ -1,0 +1,13 @@
+postgres:
+  instances: 2
+
+  storage:
+    storageClass: ebs-gp3
+    size: 20Gi
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 2Gi

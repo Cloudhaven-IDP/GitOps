@@ -1,0 +1,44 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "postgres-platform.clusterName" . }}
+  labels:
+    {{- include "postgres-platform.labels" . | nindent 4 }}
+spec:
+  imageName: {{ .Values.postgres.imageName }}
+  instances: {{ .Values.postgres.instances }}
+
+  storage:
+    storageClass: {{ required "postgres.storage.storageClass is required" .Values.postgres.storage.storageClass }}
+    size: {{ .Values.postgres.storage.size }}
+
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgres.bootstrap.database }}
+      owner: {{ .Values.postgres.bootstrap.owner }}
+
+  postgresql:
+    pg_hba:
+      - hostssl all postgres all md5
+      {{- range .Values.appRoles }}
+      {{- if eq (.authMode | default "cert") "cert" }}
+      - hostssl {{ .database }} {{ .pgRole }} all cert clientcert=verify-full
+      {{- else if eq .authMode "password" }}
+      - hostssl {{ .database }} {{ .pgRole }} all md5
+      {{- end }}
+      {{- end }}
+    parameters:
+      {{- range $k, $v := .Values.postgres.parameters }}
+      {{ $k }}: {{ $v | quote }}
+      {{- end }}
+
+  resources:
+    {{- toYaml .Values.postgres.resources | nindent 4 }}
+
+  {{- with .Values.postgres.affinity }}
+  affinity:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  monitoring:
+    enablePodMonitor: {{ .Values.monitoring.enablePodMonitor }}

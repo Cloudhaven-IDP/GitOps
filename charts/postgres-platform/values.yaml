@@ -1,0 +1,73 @@
+clusterName: ""
+dnsAlias: ""
+
+postgres:
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.6
+  instances: 1
+
+  storage:
+    storageClass: ""
+    size: 10Gi
+
+  bootstrap:
+    database: app
+    owner: app
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+  parameters:
+    max_connections: "200"
+    shared_buffers: "256MB"
+
+  # CNPG AffinityConfiguration — pin pods to a specific node when the
+  # storage class is node-local (e.g. local-path on k3s).
+  affinity: {}
+  #  nodeSelector:
+  #    kubernetes.io/hostname: pi-2
+
+appRoles: []
+# - name: theo-orchestrator         # cert Secret + Certificate resource name
+#   pgRole: theo_orchestrator       # PG LOGIN role; for authMode: cert this MUST equal Certificate CN
+#   namespace: theo                 # namespace where the Certificate (and its Secret) lands
+#   database: soma                  # PG database the role connects to
+#   schema: theo                    # PG schema the role accesses
+#   accessMode: rw                  # rw | ro | admin
+#   authMode: cert                  # cert | password
+# - name: langfuse
+#   pgRole: langfuse
+#   namespace: langfuse
+#   database: langfuse
+#   schema: public
+#   accessMode: admin
+#   authMode: password
+
+serviceAccount:
+  create: true
+  annotations: {}
+
+secretBackend:
+  type: none
+
+  ssm:
+    region: us-east-1
+    masterPathPrefix: ""
+
+  secretsManager:
+    region: us-east-1
+    masterSecretName: ""
+
+coredns:
+  rewrite:
+    enabled: false
+    kubernetesZone: cluster.local
+
+monitoring:
+  enablePodMonitor: false
+
+backup:
+  enabled: false

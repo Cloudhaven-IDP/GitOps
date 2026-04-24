@@ -1,0 +1,137 @@
+{{- if .Values.coredns.rewrite.enabled }}
+{{- $alias := required "dnsAlias is required when coredns.rewrite.enabled=true" .Values.dnsAlias }}
+{{- $target := printf "%s-rw.%s.svc.%s" (include "postgres-platform.clusterName" .) .Release.Namespace .Values.coredns.rewrite.kubernetesZone }}
+{{- $marker := printf "# postgres-platform=%s" (include "postgres-platform.clusterName" .) }}
+{{- $saName := printf "%s-coredns-patch" (include "postgres-platform.clusterName" .) }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $saName }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade,pre-delete
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
+  labels:
+    {{- include "postgres-platform.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $saName }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade,pre-delete
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
+  labels:
+    {{- include "postgres-platform.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["coredns"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["coredns"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $saName }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade,pre-delete
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
+  labels:
+    {{- include "postgres-platform.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $saName }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $saName }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "postgres-platform.clusterName" . }}-coredns-add
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    {{- include "postgres-platform.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: {{ $saName }}
+      restartPolicy: OnFailure
+      containers:
+        - name: patch
+          image: alpine/k8s:1.30.0
+          env:
+            - name: ALIAS
+              value: {{ $alias | quote }}
+            - name: TARGET
+              value: {{ $target | quote }}
+            - name: MARKER
+              value: {{ $marker | quote }}
+          command: ["/bin/sh", "-euo", "pipefail", "-c"]
+          args:
+            - |
+              CORE=$(kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}')
+              if printf '%s' "$CORE" | grep -qF "$MARKER"; then
+                echo "rewrite already installed for $MARKER"
+                exit 0
+              fi
+              LINE="    rewrite name exact ${ALIAS} ${TARGET} ${MARKER}"
+              PATCHED=$(printf '%s' "$CORE" | awk -v L="$LINE" '
+                !done && /^\.:53 \{/ { print; print L; done=1; next }
+                { print }
+              ')
+              kubectl -n kube-system create cm coredns --from-literal=Corefile="$PATCHED" --dry-run=client -o yaml | kubectl -n kube-system apply -f -
+              kubectl -n kube-system rollout restart deployment coredns
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "postgres-platform.clusterName" . }}-coredns-remove
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: pre-delete
+    helm.sh/hook-weight: "-20"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    {{- include "postgres-platform.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: {{ $saName }}
+      restartPolicy: OnFailure
+      containers:
+        - name: unpatch
+          image: alpine/k8s:1.30.0
+          env:
+            - name: MARKER
+              value: {{ $marker | quote }}
+          command: ["/bin/sh", "-euo", "pipefail", "-c"]
+          args:
+            - |
+              CORE=$(kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}')
+              if ! printf '%s' "$CORE" | grep -qF "$MARKER"; then
+                echo "no rewrite to strip for $MARKER"
+                exit 0
+              fi
+              PATCHED=$(printf '%s' "$CORE" | grep -vF "$MARKER")
+              kubectl -n kube-system create cm coredns --from-literal=Corefile="$PATCHED" --dry-run=client -o yaml | kubectl -n kube-system apply -f -
+              kubectl -n kube-system rollout restart deployment coredns
+{{- end }}
