@@ -24,11 +24,7 @@ postgres:
     max_connections: "200"
     shared_buffers: "256MB"
 
-  # CNPG AffinityConfiguration — pin pods to a specific node when the
-  # storage class is node-local (e.g. local-path on k3s).
   affinity: {}
-  #  nodeSelector:
-  #    kubernetes.io/hostname: pi-2
 
 appRoles: []
 # - name: theo-orchestrator         # cert Secret + Certificate resource name
