@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform.humboldt.temporal-pg
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: temporal-pg
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: argocd
+    cloudhaven.work/cluster: humboldt
+    cloudhaven.work/env: prod
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Cloudhaven-IDP/gitops
+    targetRevision: HEAD
+    path: apps/temporal-pg
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: temporal-pg-system
+
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

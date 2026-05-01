@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: temporal-pg-system
+
+resources:
+  - namespace.yaml
+
+helmGlobals:
+  chartHome: ../../charts
+
+helmCharts:
+  - name: postgres-platform
+    releaseName: temporal-pg
+    namespace: temporal-pg-system
+    valuesFile: values.yaml
