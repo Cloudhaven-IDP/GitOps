@@ -16,6 +16,18 @@ entries:
   postgres-platform:
   - apiVersion: v2
     appVersion: 1.29.0
+    created: "2026-05-02T11:59:44.998247466Z"
+    description: CNPG Postgres cluster. Values keyed on storage class type.
+    digest: 085f4a35305a72b3517b2c5445fcb39cc312462ddf56b6244e7f5e9a00aed410
+    maintainers:
+    - name: Cloudhaven IDP
+    name: postgres-platform
+    type: application
+    urls:
+    - https://github.com/Cloudhaven-IDP/GitOps/releases/download/postgres-platform-0.1.2/postgres-platform-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
+    appVersion: 1.29.0
     created: "2026-04-25T15:30:14.358400818Z"
     description: CNPG Postgres cluster. Values keyed on storage class type.
     digest: 07927ac884713a82fb7a7fe31078b63699ad65cf4378c939afa09699b354203b
@@ -39,4 +51,4 @@ entries:
     urls:
     - https://github.com/Cloudhaven-IDP/GitOps/releases/download/postgres-platform-0.1.0/postgres-platform-0.1.0.tgz
     version: 0.1.0
-generated: "2026-04-25T15:30:14.358410383Z"
+generated: "2026-05-02T11:59:44.998261207Z"
