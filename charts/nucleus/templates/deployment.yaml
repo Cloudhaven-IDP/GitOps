@@ -1,32 +1,34 @@
-{{- include "soma-app.validateScaling" . }}
+{{- include "nucleus.validateScaling" . }}
 {{- if not .Values.image.repository }}
 {{- fail "image.repository is required — set the full ECR repository path." }}
+{{- end }}
+{{- if not .Values.image.tag }}
+{{- fail "image.tag is required — CI bumps apps/<cluster>/<service>/image.yaml after pushing the image." }}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "soma-app.fullname" . }}
+  name: {{ include "nucleus.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "soma-app.labels" . | nindent 4 }}
+    {{- include "nucleus.labels" . | nindent 4 }}
 spec:
   {{- if not (or .Values.keda.enabled .Values.hpa.enabled) }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "soma-app.selectorLabels" . | nindent 6 }}
+      {{- include "nucleus.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "soma-app.selectorLabels" . | nindent 8 }}
-        {{- include "soma-app.labels" . | nindent 8 }}
+        {{- include "nucleus.labels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "soma-app.serviceAccountName" . }}
+      serviceAccountName: {{ include "nucleus.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ include "soma-app.fullname" . }}
+        - name: {{ include "nucleus.fullname" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
@@ -48,12 +50,16 @@ spec:
           {{- if or .Values.env .Values.externalSecret.enabled }}
           envFrom:
             {{- if .Values.externalSecret.enabled }}
+            {{- range $name, $cfg := .Values.externalSecret.stores }}
+            {{- if $cfg.enabled }}
             - secretRef:
-                name: {{ include "soma-app.secretName" . }}
+                name: {{ printf "%s-%s" (include "nucleus.fullname" $) $name }}
+            {{- end }}
+            {{- end }}
             {{- end }}
             {{- if .Values.env }}
             - configMapRef:
-                name: {{ include "soma-app.fullname" . }}-env
+                name: {{ include "nucleus.fullname" . }}-env
             {{- end }}
           {{- end }}
           {{- if .Values.configMap.enabled }}
@@ -66,7 +72,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "soma-app.configMapName" . }}
+            name: {{ include "nucleus.configMapName" . }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

@@ -2,17 +2,31 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: {{ include "soma-app.fullname" . }}
+  name: {{ include "nucleus.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "soma-app.labels" . | nindent 4 }}
+    {{- include "nucleus.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
-    name: {{ include "soma-app.fullname" . }}
+    name: {{ include "nucleus.fullname" . }}
   minReplicaCount: {{ .Values.keda.minReplicaCount }}
   maxReplicaCount: {{ .Values.keda.maxReplicaCount }}
   pollingInterval: {{ .Values.keda.pollingInterval }}
   cooldownPeriod: {{ .Values.keda.cooldownPeriod }}
   triggers:
-    {{- toYaml .Values.keda.triggers | nindent 4 }}
+    {{- if .Values.keda.cpuThreshold }}
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: {{ .Values.keda.cpuThreshold | quote }}
+    {{- end }}
+    {{- if .Values.keda.memoryThreshold }}
+    - type: memory
+      metricType: Utilization
+      metadata:
+        value: {{ .Values.keda.memoryThreshold | quote }}
+    {{- end }}
+    {{- with .Values.keda.triggers }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 {{- end }}

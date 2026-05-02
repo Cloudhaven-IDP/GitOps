@@ -13,6 +13,11 @@ postgres:
     database: app
     owner: app
 
+    postInitSQL: []
+    postInitSQLRefs: []
+    postInitApplicationSQL: []
+    postInitApplicationSQLRefs: []
+
   resources:
     requests:
       cpu: 200m
@@ -30,7 +35,7 @@ appRoles: []
 # - name: theo-orchestrator         # cert Secret + Certificate resource name
 #   pgRole: theo_orchestrator       # PG LOGIN role; for authMode: cert this MUST equal Certificate CN
 #   namespace: theo                 # namespace where the Certificate (and its Secret) lands
-#   database: soma                  # PG database the role connects to
+#   database: theo                  # PG database the role connects to
 #   schema: theo                    # PG schema the role accesses
 #   accessMode: rw                  # rw | ro | admin
 #   authMode: cert                  # cert | password

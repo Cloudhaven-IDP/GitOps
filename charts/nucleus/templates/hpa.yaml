@@ -2,15 +2,15 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "soma-app.fullname" . }}
+  name: {{ include "nucleus.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "soma-app.labels" . | nindent 4 }}
+    {{- include "nucleus.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "soma-app.fullname" . }}
+    name: {{ include "nucleus.fullname" . }}
   minReplicas: {{ .Values.hpa.minReplicas }}
   maxReplicas: {{ .Values.hpa.maxReplicas }}
   metrics:

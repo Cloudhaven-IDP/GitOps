@@ -6,7 +6,7 @@
 # -- Image
 image:
   # Full ECR repository path. Required — no default.
-  # e.g. 445746982355.dkr.ecr.us-east-1.amazonaws.com/soma-orchestrator
+  # e.g. 445746982355.dkr.ecr.us-east-1.amazonaws.com/theo-orchestrator
   repository: ""
   tag: "latest"
   pullPolicy: IfNotPresent
@@ -67,7 +67,7 @@ readinessProbe:
 serviceAccount:
   create: true
   # Annotations — add IRSA role ARN here when the IRSA module is ready:
-  # eks.amazonaws.com/role-arn: arn:aws:iam::123456789:role/soma-orchestrator
+  # eks.amazonaws.com/role-arn: arn:aws:iam::123456789:role/theo-orchestrator
   annotations: {}
 
 # -- Plain (non-secret) environment variables
@@ -81,26 +81,21 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 
-# -- ExternalSecret (ESO)
-# Pulls secrets from AWS Secrets Manager into a K8s Secret,
-# which is then mounted as envFrom on the container.
 externalSecret:
   enabled: false
-  # SecretStore to use. ClusterSecretStore spans namespaces.
-  secretStore:
-    name: aws-secrets-manager
-    kind: ClusterSecretStore
-  # Path in Secrets Manager. e.g. soma/orchestrator
-  secretManagerPath: ""
-  # How often ESO re-syncs
   refreshInterval: 1h
-  # Keys to pull. Each entry maps a K8s secret key to a Secrets Manager field.
-  # keys:
-  #   - secretKey: NUTRITIONIX_API_KEY
-  #     remoteRef:
-  #       key: soma/nutrition-agent
-  #       property: NUTRITIONIX_API_KEY
-  keys: []
+
+  stores: {}
+  # Example shape:
+  # stores:
+  #   secrets:
+  #     enabled: true
+  #     type: SecretsManager        # or ParameterStore — maps to spec.provider.aws.service
+  #     region: us-east-1
+  #     path: theo/orchestrator     # base path in the backend
+  #     keys:
+  #       - secretKey: NUTRITIONIX_API_KEY
+  #         property: NUTRITIONIX_API_KEY
 
 # -- KEDA ScaledObject
 # Mutually exclusive with hpa.enabled — the chart will fail if both are true.
@@ -108,32 +103,11 @@ keda:
   enabled: false
   minReplicaCount: 1
   maxReplicaCount: 10
-  # Polling interval in seconds
   pollingInterval: 30
-  # How long to wait before scaling to zero (if minReplicaCount: 0)
   cooldownPeriod: 300
-  # Triggers — fully configurable. Examples below.
+  cpuThreshold: 70
+  memoryThreshold: 80
   triggers: []
-  # CPU trigger example:
-  # - type: cpu
-  #   metricType: Utilization
-  #   metadata:
-  #     value: "70"
-  #
-  # Memory trigger example:
-  # - type: memory
-  #   metricType: Utilization
-  #   metadata:
-  #     value: "80"
-  #
-  # SQS trigger example (CDC feedback pipeline):
-  # - type: aws-sqs-queue
-  #   metadata:
-  #     queueURL: https://sqs.us-east-1.amazonaws.com/445746982355/soma-feedback
-  #     queueLength: "5"
-  #     awsRegion: us-east-1
-  #   authenticationRef:
-  #     name: keda-aws-credentials
 
 # -- HPA (Horizontal Pod Autoscaler)
 # Mutually exclusive with keda.enabled — the chart will fail if both are true.
@@ -141,9 +115,8 @@ hpa:
   enabled: false
   minReplicas: 1
   maxReplicas: 5
-  # Set to null to disable that metric
   targetCPUUtilizationPercentage: 70
-  targetMemoryUtilizationPercentage: null
+  targetMemoryUtilizationPercentage: 80
 
 # -- ConfigMap
 # Optional config files mounted into the container (e.g. routes.yaml).

@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "soma-app.fullname" . }}
+  name: {{ include "nucleus.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "soma-app.labels" . | nindent 4 }}
+    {{- include "nucleus.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -13,4 +13,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "soma-app.selectorLabels" . | nindent 4 }}
+    {{- include "nucleus.selectorLabels" . | nindent 4 }}

@@ -17,6 +17,22 @@ spec:
     initdb:
       database: {{ .Values.postgres.bootstrap.database }}
       owner: {{ .Values.postgres.bootstrap.owner }}
+      {{- with .Values.postgres.bootstrap.postInitSQL }}
+      postInitSQL:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.bootstrap.postInitSQLRefs }}
+      postInitSQLRefs:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.bootstrap.postInitApplicationSQL }}
+      postInitApplicationSQL:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.bootstrap.postInitApplicationSQLRefs }}
+      postInitApplicationSQLRefs:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 
   postgresql:
     pg_hba:
